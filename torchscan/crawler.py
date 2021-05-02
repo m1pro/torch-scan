@@ -60,15 +60,32 @@ def crawl_module(
         framework_overhead = (torch.cuda.memory_reserved() - torch.cuda.memory_allocated()) / 1024 ** 2
 
     # input
-    if not isinstance(input_shape, list):
+    if isinstance(input_shape, tuple):
         input_shape = [input_shape]
+
     if dtype is None:
         dtype = p.data.dtype
     if isinstance(dtype, torch.dtype):
-        dtype = [dtype] * len(input_shape)
+        if isinstance(input_shape, list):
+            dtype = [dtype] * len(input_shape)
+        elif isinstance(input_shape, dict):
+            dtype = dict((k, dtype) for k in input_shape.keys())
+        else:
+            raise ValueError
+
     # Tensor arguments
-    input_ts = [torch.rand(1, *in_shape).to(dtype=_dtype, device=device)
-                for in_shape, _dtype in zip(input_shape, dtype)]
+    if isinstance(input_shape, list):
+        input_ts = [torch.rand(1, *in_shape).to(dtype=_dtype, device=device)
+                    for in_shape, _dtype in zip(input_shape, dtype)]
+    elif isinstance(input_shape, dict):
+        input_ts = {}
+        for k, in_shape in input_shape.items():
+            _dtype = dtype[k]
+            input_ts[k] = torch.rand(1, *in_shape).to(dtype=_dtype, device=device)
+    else:
+        raise ValueError(
+            f'Got input_shape of type: {type(input_shape)}. \
+            Expecting input_shape to be of tuple / list / dict')
 
     pre_fw_handles, post_fw_handles = [], []
     pre_hook_tracker: Dict[int, Any] = {}
@@ -203,7 +220,10 @@ def crawl_module(
 
     # Forward
     with torch.no_grad():
-        module(*input_ts)
+        if isinstance(input_ts, dict):
+            module(input_ts)
+        else:
+            module(*input_ts)
 
     # Removes all hooks using their handles
     for handle in pre_fw_handles:
