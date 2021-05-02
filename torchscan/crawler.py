@@ -29,8 +29,8 @@ def apply(module: Module, fn: Callable[[Module, str], None], name: Optional[str]
 
 def crawl_module(
     module: Module,
-    input_shape: Union[List[Tuple[int, ...]], Tuple[int, ...]],
-    dtype: Optional[Union[torch.dtype, Iterable[torch.dtype]]] = None
+    input_shape: Union[List[Tuple[int, ...]], Tuple[int, ...], Dict],
+    dtype: Optional[Union[torch.dtype, Iterable[torch.dtype], Dict]] = None
 ) -> Dict[str, Any]:
     """Retrieves module information for an expected input tensor shape
 
@@ -269,7 +269,8 @@ def crawl_module(
 
 def summary(
     module: Module,
-    input_shape: Tuple[int, ...],
+    input_shape: Union[Tuple[int, ...], List, Dict],
+    dtype: Optional[Union[List, Dict]] = None,
     wrap_mode: str = 'mid',
     max_depth: Optional[int] = None,
     receptive_field: bool = False,
@@ -293,7 +294,7 @@ def summary(
     """
 
     # Get the summary dict
-    module_info = crawl_module(module, input_shape)
+    module_info = crawl_module(module, input_shape, dtype)
     # Aggregate until max_depth
     if isinstance(max_depth, int):
         module_info = aggregate_info(module_info, max_depth)
